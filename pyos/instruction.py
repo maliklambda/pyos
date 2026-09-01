@@ -3,6 +3,7 @@ from enum import Enum
 class InstructionType(Enum):
     ADD=1
     SUB=2
+    SYSCALL=3
 
 class InstructionArgType(Enum):
     CONST=1

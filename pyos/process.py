@@ -1,8 +1,11 @@
 from enum import Enum
 import sys
+from typing import Optional
 
 from pyos.instruction import Instruction, InstructionArg, InstructionArgType, InstructionType
 from pyos.registers import CPU
+from pyos.syscall import SysCall
+from pyos.trap import TrapType
 
 
 class ProcessStatus(Enum):
@@ -31,7 +34,6 @@ class Process:
         self.current_instruction = 0
         self.address_space = address_space
         self.stack = [0, 0] # initialize stack with zero registers
-        # self.stack = []
 
     def __str__(self) -> str:
         s = "\n  -".join([
@@ -74,6 +76,25 @@ class Process:
         self.cpu.ra = self.stack.pop()
         print("CPU after:", self.cpu)
 
+    def _handle_cpu_trap(self):
+        print("Handling cpu trap")
+        match self.cpu.trap.type:
+            case TrapType.SYSCALL:
+                call = self._get_syscall()
+                sys.exit(f"TODO: Execute syscall {call}")
+            case _:
+                sys.exit("Error: Unhandled CPU trap")
+
+    def _get_syscall(self) -> SysCall:
+        # assert that trap is active and of type syscall
+        assert self.cpu.trap 
+        assert self.cpu.trap.type == TrapType.SYSCALL
+
+        if max(TrapType, key=lambda c: c.value).value < self.cpu.ra:
+            sys.exit(f"Error: Invalid syscall value {self.cpu.ra}")
+        call_type = TrapType(self.cpu.ra)
+        print("call type:", call_type)
+        return SysCall(call_type, [])
 
 def make_processes(cpu: CPU) -> tuple[Process, Process]:
     p0 = Process(
@@ -101,9 +122,10 @@ def make_processes(cpu: CPU) -> tuple[Process, Process]:
                 InstructionArg(0, InstructionArgType.REG)
             ]),
             Instruction(type=InstructionType.SUB, args=[
-                InstructionArg(4, InstructionArgType.CONST),
+                InstructionArg(29, InstructionArgType.CONST),
                 InstructionArg(0, InstructionArgType.REG)
             ]),
+            Instruction(type=InstructionType.SYSCALL, args=[]),
         ],
         cpu = cpu,
         address_space=[]

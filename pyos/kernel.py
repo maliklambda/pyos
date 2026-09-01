@@ -4,7 +4,7 @@ from pyos.process import Process, ProcessStatus
 import sys
 
 
-class Scheduler:
+class Kernel:
     def __init__(self) -> None:
         # TODO: Add priority to each process
         self.active_processes: list[Process] = []
@@ -79,6 +79,9 @@ class Scheduler:
         print(f"Executing {num_of_instructions} instruction(s) for process {process.pid}")
         for _ in range(num_of_instructions):
             process.execute_instr()
+            if process.cpu.has_trapped():
+                print("CPU trapped")
+                process._handle_cpu_trap()
             if process.status == ProcessStatus.FINISHED: 
                 print(f"Removing process {process.pid}")
                 self.remove_process(process.pid)
@@ -86,4 +89,3 @@ class Scheduler:
 
     def remove_process(self, pid: int):
         self.active_processes = [p for p in self.active_processes if p.pid != pid]
-
