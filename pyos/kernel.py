@@ -3,6 +3,9 @@ from typing import Optional
 from pyos.process import Process, ProcessStatus
 import sys
 
+from pyos.syscall import SysCall, SysCallType
+from pyos.trap import Trap, TrapType
+
 
 class Kernel:
     def __init__(self) -> None:
@@ -20,7 +23,7 @@ class Kernel:
             processes_str,
         ])
 
-    def loop(self):
+    def run(self):
         self._grab_new_current_process()
         idx = 0
 
@@ -81,11 +84,30 @@ class Kernel:
             process.execute_instr()
             if process.cpu.has_trapped():
                 print("CPU trapped")
-                process._handle_cpu_trap()
+                self._handle_cpu_trap(process)
             if process.status == ProcessStatus.FINISHED: 
                 print(f"Removing process {process.pid}")
                 self.remove_process(process.pid)
-                return
 
     def remove_process(self, pid: int):
         self.active_processes = [p for p in self.active_processes if p.pid != pid]
+
+    def _handle_cpu_trap(self, process: Process):
+        print("Handling cpu trap")
+        match process.cpu.trap.type:
+            case TrapType.SYSCALL:
+                call = process._get_syscall()
+                self._syscall(call)
+            case _:
+                sys.exit("Error: Unhandled CPU trap")
+
+    def _syscall(self, syscall: SysCall):
+        match syscall.type:
+            case SysCallType.WRITE:
+                self._write(syscall.args[0], syscall.args[1], syscall.args[2])
+            case _: sys.exit(f"Error: Unhandled syscall-kernel-interface: {syscall.type}")
+
+    def _write(self, fd: int, offset: int, buffer: bytearray):
+        sys.exit(f"TODO: write syscall kernel")
+
+

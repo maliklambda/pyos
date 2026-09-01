@@ -5,9 +5,6 @@ from typing import Optional
 class TrapType(Enum):
     SYSCALL=1
 
-    def max_val() -> int:
-        return max(TrapType, key=lambda c: c.value)
-
 class Trap:
     def __init__(self) -> None:
         self.has_trapped = False

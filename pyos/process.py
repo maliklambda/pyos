@@ -1,10 +1,9 @@
 from enum import Enum
 import sys
-from typing import Optional
 
 from pyos.instruction import Instruction, InstructionArg, InstructionArgType, InstructionType
 from pyos.registers import CPU
-from pyos.syscall import SysCall
+from pyos.syscall import SysCall, SysCallType
 from pyos.trap import TrapType
 
 
@@ -76,15 +75,6 @@ class Process:
         self.cpu.ra = self.stack.pop()
         print("CPU after:", self.cpu)
 
-    def _handle_cpu_trap(self):
-        print("Handling cpu trap")
-        match self.cpu.trap.type:
-            case TrapType.SYSCALL:
-                call = self._get_syscall()
-                sys.exit(f"TODO: Execute syscall {call}")
-            case _:
-                sys.exit("Error: Unhandled CPU trap")
-
     def _get_syscall(self) -> SysCall:
         # assert that trap is active and of type syscall
         assert self.cpu.trap 
@@ -92,7 +82,7 @@ class Process:
 
         if max(TrapType, key=lambda c: c.value).value < self.cpu.ra:
             sys.exit(f"Error: Invalid syscall value {self.cpu.ra}")
-        call_type = TrapType(self.cpu.ra)
+        call_type = SysCallType(self.cpu.ra)
         print("call type:", call_type)
         return SysCall(call_type, [])
 
