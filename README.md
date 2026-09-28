@@ -10,3 +10,6 @@ The following concepts are implemented:
 - Processes: Processes with their own address space, programm counter, stack, etc.
 - Scheduler & Dispatcher: Schedule and dispatch different processes with a fair scheduling (linear) algorithm and a dispatcher that is based on number-of-instructions and software-interrupts (instead of time-quanta with hardware-interrupts) based on the virtualized CPU
 - Kernel: Handles traps/sys-calls, scheduling, dispatching and context-switching
+
+## Architecture
+![pyos architecture diagram](./pyos.drawio.png)
