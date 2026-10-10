@@ -104,6 +104,12 @@ class Kernel:
     def _syscall(self, syscall: SysCall):
         match syscall.type:
             case SysCallType.WRITE:
+                print("Write-SysCall")
+                assert len(syscall.args) >= 3, "Cannot execute WRITE syscall with less than 3 args. Need fd, offset, buffer"
+                self._write(syscall.args[0], syscall.args[1], syscall.args[2])
+            case SysCallType.OPEN:
+                print("Open-SysCall")
+                assert len(syscall.args) >= 3, "Cannot execute WRITE syscall with less than 3 args. Need fd, offset, buffer"
                 self._write(syscall.args[0], syscall.args[1], syscall.args[2])
             case _: sys.exit(f"Error: Unhandled syscall-kernel-interface: {syscall.type}")
 

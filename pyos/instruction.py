@@ -1,14 +1,15 @@
 from enum import Enum
 
 class InstructionType(Enum):
-    ADD=1
-    SUB=2
+    ADD=1 # ADD val to dst
+    SUB=2 # SUB val from dst
     SYSCALL=3
+    MOV=4 # MOV into dst val
 
 class InstructionArgType(Enum):
     CONST=1
-    MEM=2
-    REG=3
+    REG=2
+    MEM=3
 
 class InstructionArg:
     def __init__(self, val: int, arg_type: InstructionArgType) -> None:

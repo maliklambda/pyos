@@ -2,7 +2,8 @@ from enum import Enum
 import sys
 
 from pyos.instruction import Instruction, InstructionArg, InstructionArgType, InstructionType
-from pyos.registers import CPU
+from pyos.memory import Memory
+from pyos.registers import CPU, Register
 from pyos.syscall import SysCall, SysCallType
 from pyos.trap import TrapType
 
@@ -83,21 +84,29 @@ class Process:
         if max(TrapType, key=lambda c: c.value).value < self.cpu.ra:
             sys.exit(f"Error: Invalid syscall value {self.cpu.ra}")
         call_type = SysCallType(self.cpu.ra)
+        args = []
         print("call type:", call_type)
-        return SysCall(call_type, [])
+        match call_type:
+            case SysCallType.WRITE:
+                # TODO: get sys call args from registers
+                assert self.cpu.ra in self.fds, f"Unknown FD {self.cpu.ra}. FDs are {self.fds}"
+                args = [self.cpu.ra, self.cpu.rb, bytearray([1,2,3])]
+            case _: sys.exit("Error: Unhandled CPU trap")
 
-def make_processes(cpu: CPU) -> tuple[Process, Process]:
+        return SysCall(call_type, args)
+
+def make_processes(cpu: CPU) -> list[Process]:
     p0 = Process(
         pid=0, 
         status=ProcessStatus.READY, 
         instructions=[
             Instruction(type=InstructionType.ADD, args=[
                 InstructionArg(20, InstructionArgType.CONST),
-                InstructionArg(0, InstructionArgType.REG)
+                InstructionArg(int(Register.RA), InstructionArgType.REG)
             ]),
             Instruction(type=InstructionType.ADD, args=[
                 InstructionArg(30, InstructionArgType.CONST),
-                InstructionArg(0, InstructionArgType.REG)
+                InstructionArg(int(Register.RA), InstructionArgType.REG)
             ]),
         ],
         cpu = cpu,
@@ -109,15 +118,39 @@ def make_processes(cpu: CPU) -> tuple[Process, Process]:
         instructions=[
             Instruction(type=InstructionType.ADD, args=[
                 InstructionArg(30, InstructionArgType.CONST),
-                InstructionArg(0, InstructionArgType.REG)
+                InstructionArg(int(Register.RA), InstructionArgType.REG)
             ]),
             Instruction(type=InstructionType.SUB, args=[
                 InstructionArg(29, InstructionArgType.CONST),
-                InstructionArg(0, InstructionArgType.REG)
+                InstructionArg(int(Register.RA), InstructionArgType.REG)
             ]),
-            Instruction(type=InstructionType.SYSCALL, args=[]),
+            Instruction(type=InstructionType.MOV, args=[
+                InstructionArg(int(Register.RB), InstructionArgType.REG),
+                InstructionArg(int(Register.RA), InstructionArgType.REG)
+            ]),
+            Instruction(type=InstructionType.MOV, args=[
+                InstructionArg(int(Register.RD), InstructionArgType.REG),
+                InstructionArg(int(Register.RA), InstructionArgType.REG)
+            ]),
+            Instruction(type=InstructionType.MOV, args=[
+                InstructionArg(int(Register.RB), InstructionArgType.REG),
+                InstructionArg(2, InstructionArgType.MEM)
+            ]),
+            Instruction(type=InstructionType.MOV, args=[
+                InstructionArg(int(Register.RA), InstructionArgType.REG),
+                InstructionArg(500, InstructionArgType.CONST)
+            ]),
+            Instruction(type=InstructionType.MOV, args=[
+                InstructionArg(2, InstructionArgType.MEM),
+                InstructionArg(int(Register.RA), InstructionArgType.REG)
+            ]),
+            Instruction(type=InstructionType.MOV, args=[
+                InstructionArg(int(Register.RB), InstructionArgType.REG),
+                InstructionArg(2, InstructionArgType.MEM)
+            ]),
+            # Instruction(type=InstructionType.SYSCALL, args=[]),
         ],
         cpu = cpu,
         address_space=[]
     )
-    return p0, p1
+    return [p0, p1]

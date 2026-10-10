@@ -1,18 +1,21 @@
 from pyos.kernel import Kernel
 from pyos.registers import CPU
+from pyos.memory import Memory
 from pyos.process import make_processes
 
 def main():
-    cpu = CPU()
+    mem = Memory(512)
+    cpu = CPU(mem)
     kernel = Kernel()
-    p0, p1 = make_processes(cpu)
-    print(f"p: {p0}\n{p1}")
+    processes = make_processes(cpu)
+    print(f"Processes: {processes}")
 
-    kernel.add_process(p0)
-    kernel.add_process(p1)
+    for p in processes:
+        kernel.add_process(p)
 
     kernel.run()
     print(cpu)
+    print(mem)
 
 
 if __name__ == "__main__": main()
