@@ -1,8 +1,11 @@
 from typing import Optional
 
+from pyos.memory import Memory
 from pyos.process import Process, ProcessStatus
 import sys
 
+from pyos.registers import CPU
+from pyos.state import StateKind, StateLog
 from pyos.syscall import SysCall, SysCallType
 from pyos.trap import Trap, TrapType
 
@@ -23,7 +26,7 @@ class Kernel:
             processes_str,
         ])
 
-    def run(self):
+    def run(self, debug = None):
         self._grab_new_current_process()
         idx = 0
 
@@ -31,7 +34,7 @@ class Kernel:
             print(f"\n--- Current PID: {self.current_pid} ---")
             new_pid = self.active_processes[idx%len(self.active_processes)].pid
             print(f"--- New PID: {new_pid} ---")
-            self.exec_process(new_pid)
+            self.exec_process(new_pid, debug)
             idx += 1
 
     def add_process(self, process: Process):
@@ -73,7 +76,7 @@ class Kernel:
             return
         current_process_new.load_state()
 
-    def exec_process(self, pid: int):
+    def exec_process(self, pid: int, debug):
         self._switch_context(pid)
         print("switched context")
         num_of_instructions = 1
@@ -81,8 +84,10 @@ class Kernel:
         if not process: return
         print(f"Executing {num_of_instructions} instruction(s) for process {process.pid}")
         for _ in range(num_of_instructions):
-            process.execute_instr()
+            process.execute_instr(debug)
             if process.cpu.has_trapped():
+                if debug:
+                    debug.history.append(StateLog(kind=StateKind.Trap, info={"trap": True}))
                 print("CPU trapped")
                 self._handle_cpu_trap(process)
             if process.status == ProcessStatus.FINISHED: 

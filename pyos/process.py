@@ -2,8 +2,8 @@ from enum import Enum
 import sys
 
 from pyos.instruction import Instruction, InstructionArg, InstructionArgType, InstructionType
-from pyos.memory import Memory
 from pyos.registers import CPU, Register
+from pyos.state import StateKind, StateLog
 from pyos.syscall import SysCall, SysCallType
 from pyos.trap import TrapType
 
@@ -47,7 +47,7 @@ class Process:
         ])
         return s
     
-    def execute_instr(self):
+    def execute_instr(self, debug):
         if self.status == ProcessStatus.FINISHED:
             sys.exit(f"Error: Trying to execute finished process {self.pid}.")
         elif self.current_instruction >= len(self.instructions):
@@ -59,6 +59,8 @@ class Process:
         print(f"\tExecuting instruction {instr} for pid: {self.pid}")
         self.current_instruction += 1
         self.cpu.exec_instr(instr)
+        if debug:
+            debug.history.append(StateLog(kind=StateKind.Instruction, info={"cpu": str(self.cpu), "pid": self.pid, "instr": str(instr)}))
 
     def save_state(self):
         self.status = ProcessStatus.READY

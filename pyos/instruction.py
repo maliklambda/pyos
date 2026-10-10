@@ -16,10 +16,22 @@ class InstructionArg:
         self.val = val
         self.arg_type = arg_type
 
+    def __str__(self) -> str:
+        return f"{self.val} ({self.arg_type})"
+
 class Instruction:
     def __init__(self, type: InstructionType, args: list[InstructionArg] = []) -> None:
         self.type = type
         self.args = args
 
     def __str__(self) -> str:
+        s = " ".join([
+            "Instruction:",
+            str(self.type),
+            "(",
+            " - ".join(str(arg) for arg in self.args),
+            ")"
+        ])
+        return s
+
         return f"{self.type} ({self.args})"

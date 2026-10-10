@@ -30,19 +30,19 @@ class Memory():
         bytes = self.read_process(address, 4)
         return int.from_bytes(bytes, byteorder='big', signed=False)
 
-    def _write(self, address: int, val: bytearray):
+    def _write(self, address: int, val: bytes):
         print("Writing to address ", address)
         self._assert_address_range_abs(address, len(val))
         self.data = self.data[0:address] + val + self.data[address+len(val):]
 
-    def write_krnl(self, address: int, val: bytearray):
+    def write_krnl(self, address: int, val: bytes):
         self._write(address, val)
 
-    def write_process(self, address: int, val: bytearray):
+    def write_process(self, address: int, val: bytes):
         # TODO: enforce constraints on memory-writes for non-kernel processes
         self._write(address, val)
 
     # write a value of size Register-Value
-    def write_register(self, address: int, val: bytearray):
+    def write_register(self, address: int, val: bytes):
         self.write_process(address, val)
 
