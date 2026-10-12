@@ -58,7 +58,7 @@ class Kernel:
         if len(self.active_processes) > 0:
             self.current_pid = self.active_processes[0].pid
 
-    def _switch_context(self, new_pid: int):
+    def _switch_context(self, new_pid: int, debug = None):
         print(f"Switching context from {self.current_pid} to {new_pid}")
         # Save state of the old process
         current_process = self._get_current_process()
@@ -68,6 +68,8 @@ class Kernel:
         if new_pid not in [p.pid for p in self.active_processes]:
             sys.exit(f"Error: PID {new_pid} cannot be switched to, as it is not known by the scheduler")
         print(f"Updating current pid from {self.current_pid} to {new_pid}")
+        if debug:
+            debug.history.append(StateLog(kind=StateKind.ContextSwitch, info={"current_pid": self.current_pid, "new_pid": new_pid}))
         self.current_pid = new_pid
 
         # Load state of the new process
@@ -76,8 +78,8 @@ class Kernel:
             return
         current_process_new.load_state()
 
-    def exec_process(self, pid: int, debug):
-        self._switch_context(pid)
+    def exec_process(self, pid: int, debug = None):
+        self._switch_context(pid, debug)
         print("switched context")
         num_of_instructions = 1
         process = self._get_current_process()
