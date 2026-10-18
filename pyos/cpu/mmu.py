@@ -1,5 +1,8 @@
+from re import split
+
 from pyos.memory import Memory
 import sys
+import struct
 
 class MMU:
     def __init__(self, mem: Memory, tlb_size: int) -> None:
@@ -34,20 +37,34 @@ class MMU:
             2. Split lower in half, yielding (segment, page)
     """
     def _resolve_virtual_addr(self) -> int:
-        (lower, displacement) = split_bits(self.current_addr, lower_bits=self.PAGE_FRAME_BITS, size=self.ADDR_SIZE)
-        (segment, page) = split_bits(lower, lower_bits=self.SEGMENT_BITS, size=self.PAGE_FRAME_BITS)
+        addr_bytes = pack_16bit(self.current_addr)
+        assert len(addr_bytes) == self.ADDR_SIZE/8, "Missmatch in addr_bytes-conversion: Expected {self.ADDR_SIZE/8}, got {len(addr_bytes)}"
+        (lower_byte, displacement_byte) = addr_bytes[0:1], addr_bytes[1:]
+        displacement = int.from_bytes(displacement_byte, byteorder='big', signed=False)
+        (segment, page) = split_bits(lower_byte)
         tlb_lookup = self.tlb.lookup(segment, page)
         if tlb_lookup:
             return join_bits(upper=displacement, lower=tlb_lookup, lower_bits=self.PAGE_FRAME_BITS, size=self.ADDR_SIZE)
         sys.exit("TODO: Walk segment-table & page-table to retrieve page-frame")
+        page_frame = self._get_page_frame(segment, page)
+        self.tlb.add_entry(segment, page, page_frame)
 
-def split_bits(val: int, lower_bits: int, size: int) -> tuple[int, int]:
-    assert val.bit_count() == size, f"Missmatch in int-size: expected {size}, got {val.bit_count()}"
+
+def split_bits(byte_val: bytes) -> tuple[int, int]:
+    assert len(byte_val) == 1, "Invalid size"
     # Create a mask for the lower bits (e.g., 4 bits -> 0b1111 or 15)
-    mask = (1 << lower_bits) - 1
-    upper = val >> lower_bits
-    lower = val & mask
+    upper = byte_val[0] >> 4
+    lower = byte_val[0] & 0x0F
     return (upper, lower)
+
+def pack_16bit(val: int) -> bytes:
+    assert val < 2**16, f"Address Conversion Error: Address ({val}) exceeds 16bit"
+    # '>H' means Big-Endian, 2-byte Unsigned Short (16 bits); '<H' would be Little-Endian
+    return struct.pack('>H', val)
+
+def unpack_16bit(high_byte: int, low_byte: int) -> int:
+    packed = bytes([high_byte, low_byte])
+    return struct.unpack('>H', packed)[0]
 
 def join_bits(upper: int, lower: int, lower_bits: int, size: int) -> int:
     assert upper.bit_count() + lower.bit_count() == size, f"Missmatch in int-size: expected {size}, got lower({lower.bit_count()} + upper({upper.bit_count()}))"

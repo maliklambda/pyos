@@ -3,7 +3,7 @@ from enum import Enum
 class InstructionType(Enum):
     ADD=1 # ADD val to dst
     SUB=2 # SUB val from dst
-    SYSCALL=3
+    SYSCALL=3 # Initiate syscall
     MOV=4 # MOV into dst val
 
 class InstructionArgType(Enum):
