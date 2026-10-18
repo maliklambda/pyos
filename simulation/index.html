@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>State Viewer</title>
+
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #f5f7fa;
+      color: #1f2937;
+    }
+
+    h1, h2 {
+      margin-bottom: 12px;
+    }
+
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 130px;
+      padding: 12px;
+      font: 14px monospace;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: white;
+    }
+
+    button, select {
+      padding: 9px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: white;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button:hover {
+      background: #e2e8f0;
+    }
+
+    .primary {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+
+    .primary:hover {
+      background: #1d4ed8;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 16px 0;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid #dbe2ea;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 20px;
+      box-shadow: 0 3px 10px #00000008;
+      animation: appear 180ms ease-out;
+    }
+
+    .state-value {
+      font-size: 1.5rem;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .state-info {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.6;
+    }
+
+    .muted {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    .progress {
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #2563eb;
+      width: 0%;
+      transition: width 200ms ease;
+    }
+
+    .error {
+      color: #b91c1c;
+      margin-top: 10px;
+    }
+
+    @keyframes appear {
+      from { opacity: 0.3; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+
+<body>
+  <h1>State Viewer</h1>
+  <p class="muted">
+    Load a sequence of states and step through them or play them automatically.
+  </p>
+
+  <h2>Input JSON</h2>
+  <textarea id="jsonInput" spellcheck="false">[
+  {
+    "id": 1,
+    "value": "Initial state",
+    "info": "The program has started."
+  },
+  {
+    "id": 2,
+    "value": "Processing",
+    "info": "The first operation has completed."
+  },
+  {
+    "id": 3,
+    "value": "Finished",
+    "info": "All operations are complete."
+  }
+]</textarea>
+
+  <div class="controls">
+    <button id="loadButton" class="primary">Load states</button>
+    <span id="error" class="error" role="alert"></span>
+  </div>
+
+  <hr>
+
+  <div class="controls">
+    <button id="firstButton" title="First state">|◀</button>
+    <button id="prevButton" title="Previous state">◀</button>
+    <button id="playButton" class="primary">▶ Play</button>
+    <button id="nextButton" title="Next state">▶|</button>
+    <button id="lastButton" title="Last state">Last</button>
+
+    <label for="speed">Interval:</label>
+    <select id="speed">
+      <option value="2000">Slow (2s)</option>
+      <option value="1000" selected>Normal (1s)</option>
+      <option value="300">Fast (0.3s)</option>
+    </select>
+  </div>
+
+  <div class="progress">
+    <div id="progressBar" class="progress-bar"></div>
+  </div>
+
+  <p id="counter" class="muted">No states loaded</p>
+
+  <div id="stateDisplay" class="card" aria-live="polite">
+    <p class="muted">Load some states to begin.</p>
+  </div>
+
+  <h2>All states</h2>
+  <div id="stateList"></div>
+
+  <script>
+    let states = [];
+    let currentIndex = 0;
+    let timer = null;
+
+    const $ = id => document.getElementById(id);
+
+    function stopPlayback() {
+      if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
+      }
+      $("playButton").textContent = "▶ Play";
+    }
+
+    function validateStates(data) {
+      if (!Array.isArray(data)) {
+        throw new Error("Input must be a JSON array.");
+      }
+
+      data.forEach((state, index) => {
+        if (
+          state === null ||
+          typeof state !== "object" ||
+          !Object.hasOwn(state, "id") ||
+          !Object.hasOwn(state, "value") ||
+          !Object.hasOwn(state, "info") ||
+          !["string", "number"].includes(typeof state.id) ||
+          typeof state.value !== "string" ||
+          typeof state.info !== "string"
+        ) {
+          throw new Error(
+            `Invalid state at index ${index}. Each state needs id, value, and info.`
+          );
+        }
+      });
+
+      return data;
+    }
+
+    function loadStates() {
+      stopPlayback();
+      $("error").textContent = "";
+
+      try {
+        const parsed = JSON.parse($("jsonInput").value);
+        states = validateStates(parsed);
+        currentIndex = 0;
+
+        renderAll();
+      } catch (error) {
+        $("error").textContent = error.message;
+      }
+    }
+
+    function showState(index) {
+      if (states.length === 0) return;
+
+      currentIndex = Math.max(
+        0,
+        Math.min(index, states.length - 1)
+      );
+
+      const state = states[currentIndex];
+
+      // Use textContent to display input safely.
+      $("stateDisplay").innerHTML = "";
+
+      const heading = document.createElement("h2");
+      heading.textContent = `State ${state.id}`;
+
+      const valueLabel = document.createElement("p");
+      valueLabel.className = "muted";
+      valueLabel.textContent = "Value";
+
+      const value = document.createElement("div");
+      value.className = "state-value";
+      value.textContent = state.value;
+
+      const infoLabel = document.createElement("p");
+      infoLabel.className = "muted";
+      infoLabel.textContent = "Info";
+
+      const info = document.createElement("p");
+      info.className = "state-info";
+      info.textContent = state.info;
+
+      $("stateDisplay").append(
+        heading, valueLabel, value, infoLabel, info
+      );
+
+      $("counter").textContent =
+        `State ${currentIndex + 1} of ${states.length}`;
+
+      $("progressBar").style.width =
+        `${100 * (currentIndex + 1) / states.length}%`;
+
+      $("prevButton").disabled = currentIndex === 0;
+      $("firstButton").disabled = currentIndex === 0;
+      $("nextButton").disabled =
+        currentIndex === states.length - 1;
+      $("lastButton").disabled =
+        currentIndex === states.length - 1;
+
+      document.querySelectorAll(".state-item").forEach(
+        (element, i) => {
+          element.style.borderColor =
+            i === currentIndex ? "#2563eb" : "#dbe2ea";
+          element.style.background =
+            i === currentIndex ? "#eff6ff" : "white";
+        }
+      );
+
+      // Keep the dropdown in sync with the current state.
+      $("stateSelect").value = String(currentIndex);
+    }
+
+    function renderAll() {
+      $("stateList").innerHTML = "";
+
+      // Create a state selector for quick navigation.
+      let select = $("stateSelect");
+      if (!select) {
+        select = document.createElement("select");
+        select.id = "stateSelect";
+        select.setAttribute("aria-label", "Select state");
+
+        const label = document.createElement("label");
+        label.textContent = "Jump to state: ";
+        label.append(select);
+        $("stateList").before(label);
+      }
+
+      select.innerHTML = "";
+
+      states.forEach((state, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = `${state.id}: ${state.value}`;
+        select.append(option);
+
+        const item = document.createElement("button");
+        item.className = "state-item";
+        item.style.cssText =
+          "display:block;width:100%;text-align:left;margin:8px 0;" +
+          "border:1px solid #dbe2ea;background:white;";
+
+        const title = document.createElement("strong");
+        title.textContent = `${state.id} — ${state.value}`;
+
+        const description = document.createElement("div");
+        description.className = "muted";
+        description.textContent = state.info;
+
+        item.append(title, description);
+        item.addEventListener("click", () => {
+          stopPlayback();
+          showState(index);
+        });
+
+        $("stateList").append(item);
+      });
+
+      showState(0);
+    }
+
+    function play() {
+      if (states.length === 0) return;
+
+      if (timer !== null) {
+        stopPlayback();
+        return;
+      }
+
+      if (currentIndex >= states.length - 1) {
+        showState(0);
+      }
+
+      $("playButton").textContent = "⏸ Pause";
+
+      timer = setInterval(() => {
+        if (currentIndex >= states.length - 1) {
+          stopPlayback();
+          return;
+        }
+
+        showState(currentIndex + 1);
+      }, Number($("speed").value));
+    }
+
+    $("loadButton").addEventListener("click", loadStates);
+
+    $("firstButton").addEventListener("click", () => {
+      stopPlayback();
+      showState(0);
+    });
+
+    $("prevButton").addEventListener("click", () => {
+      stopPlayback();
+      showState(currentIndex - 1);
+    });
+
+    $("nextButton").addEventListener("click", () => {
+      stopPlayback();
+      showState(currentIndex + 1);
+    });
+
+    $("lastButton").addEventListener("click", () => {
+      stopPlayback();
+      showState(states.length - 1);
+    });
+
+    $("playButton").addEventListener("click", play);
+
+    $("speed").addEventListener("change", () => {
+      if (timer !== null) {
+        stopPlayback();
+        play();
+      }
+    });
+
+    $("jsonInput").addEventListener("keydown", event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+        loadStates();
+      }
+    });
+
+    $("stateSelect")?.addEventListener("change", event => {
+      stopPlayback();
+      showState(Number(event.target.value));
+    });
+
+    loadStates();
+  </script>
+</body>
+</html>
