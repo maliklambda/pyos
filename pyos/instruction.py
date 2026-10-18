@@ -34,4 +34,3 @@ class Instruction:
         ])
         return s
 
-        return f"{self.type} ({self.args})"

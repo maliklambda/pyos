@@ -36,6 +36,8 @@ class Kernel:
             print(f"--- New PID: {new_pid} ---")
             self.exec_process(new_pid, debug)
             idx += 1
+            if debug:
+                debug.history.append(StateLog(kind=StateKind.ContextSwitch, info={"ctx": True}))
 
     def add_process(self, process: Process):
         if process.pid in [p.pid for p in self.active_processes]:
