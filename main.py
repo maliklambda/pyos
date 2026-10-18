@@ -1,12 +1,12 @@
 from pyos.kernel import Kernel
-from pyos.registers import CPU
+from pyos.kernel import make_processes
+from pyos.cpu.cpu import CPU
 from pyos.memory import Memory
 from pyos.state import State
-from pyos.process import make_processes
 
 def main():
     mem = Memory(512)
-    cpu = CPU(mem)
+    cpu = CPU(mem, 5)
     kernel = Kernel()
     processes = make_processes(cpu)
     print(f"Processes: {processes}")

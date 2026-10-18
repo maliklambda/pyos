@@ -10,6 +10,7 @@ class Memory():
         s = f"{self.data}"
         return s
 
+    # Asserts the absolute bounds of the possible address
     def _assert_address_range_abs(self, address: int, n: int):
         assert address > 0 and address < len(self.data), f"Invalid address: {address} (data: {len(self.data)})"
         assert n > 0 and address + n < len(self.data), f"Invalid address (n): {address} ({n})"

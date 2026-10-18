@@ -1,8 +1,10 @@
-import sys
-from pyos.instruction import Instruction, InstructionArgType, InstructionType
-from pyos.memory import Memory
-from pyos.trap import Trap
 from enum import IntEnum
+
+import sys
+from .instruction import Instruction, InstructionArgType, InstructionType
+from .trap import Trap
+from .mmu import MMU
+from pyos.memory import Memory
 
 
 class Register(IntEnum):
@@ -13,13 +15,13 @@ class Register(IntEnum):
 
 class CPU:
     REG_SIZE = 4
-    def __init__(self, mem: Memory) -> None:
+    def __init__(self, mem: Memory, tlb_size: int) -> None:
         self.ra: int = 0
         self.rb: int = 0
         self.rd: int = 0
         self.rs: int = 0
-        self.mem: Memory = mem
         self.trap = Trap()
+        self.mmu = MMU(mem, tlb_size)
 
     def __str__(self) -> str:
         s = "\n  -".join([
@@ -173,7 +175,7 @@ class CPU:
                 self.rs = val 
 
     def _mov_mem_to_reg(self, address: int, target: Register):
-        val = self.mem.read_register(address)
+        val = self.mmu.mem.read_register(address)
         match target:
             case Register.RA:
                 self.ra = val 
@@ -195,5 +197,6 @@ class CPU:
                 val = self.rd
             case Register.RS:
                 val = self.rs
-        self.mem.write_register(address, val.to_bytes(length=4, byteorder="big", signed=False))
+        self.mmu.mem.write_register(self.mmu.resolve_addr(address), val.to_bytes(length=4, byteorder="big", signed=False))
+
 

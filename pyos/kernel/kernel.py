@@ -1,13 +1,9 @@
-from typing import Optional
-
-from pyos.memory import Memory
-from pyos.process import Process, ProcessStatus
 import sys
 
-from pyos.registers import CPU
+from .process import Process, ProcessStatus
+from .syscall import SysCall, SysCallType
 from pyos.state import StateKind, StateLog
-from pyos.syscall import SysCall, SysCallType
-from pyos.trap import Trap, TrapType
+from pyos.cpu.trap import TrapType
 
 
 class Kernel:
@@ -44,7 +40,7 @@ class Kernel:
             sys.exit(f"Error: Duplicate PID {process.pid}")
         self.active_processes.append(process)
 
-    def _get_current_process(self) -> Optional[Process]:
+    def _get_current_process(self) -> Process | None:
         process_lst = [p for p in self.active_processes if p.pid == self.current_pid]
         if len(process_lst) != 1: 
             print(f"Process {self.current_pid} is not active")
